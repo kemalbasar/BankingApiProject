@@ -1,0 +1,17 @@
+summary: "Get account by id "
+description: "Try it out for listing all accounts"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+
+parameters:
+  - in: "path"
+    name: "accountid"
+    type: "integer"
+    required: true
+responses:
+  200:
+    description: "Account listed"
+  705:
+    description: "Account dont exist"

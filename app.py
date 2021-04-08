@@ -1,42 +1,44 @@
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
-from apispec import APISpec
-from marshmallow import Schema, fields
-from apispec.ext.marshmallow import MarshmallowPlugin
-from flask_apispec.extension import FlaskApiSpec
-from flask_apispec.views import MethodResource
-from flask_apispec import marshal_with, doc, use_kwargs
+from flasgger import Swagger
+from flasgger.utils import swag_from
+from flasgger import LazyString, LazyJSONEncoder
+
 
 app = Flask(__name__)
 
 # Constructer of api
 api = Api(app)
 
-app.config.update({
-    'APISPEC_SPEC': APISpec(
-        title='Bankin Api Doc',
-        version='v1',
-        plugins=[MarshmallowPlugin()],
-        openapi_version='2.0.0'
-    ),
-    'APISPEC_SWAGGER_URL': '/swagger/',  # URI to access API Doc JSON
-    'APISPEC_SWAGGER_UI_URL': '/swagger-ui/'  # URI to access UI of API Doc
-})
 
-docs = FlaskApiSpec(app)
+app.config["SWAGGER"] = {"title": "Swagger-UI", "uiversion": 2}
+
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": "apispec_1",
+            "route": "/apispec_1.json",
+            "rule_filter": lambda rule: True,  # all in
+            "model_filter": lambda tag: True,  # all in
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    # "static_folder": "static",  # must be set by user
+    "swagger_ui": True,
+    "specs_route": "/",
+}
+
+template = dict(
+    swaggerUiPrefix=LazyString(lambda: request.environ.get("HTTP_X_SCRIPT_NAME", ""))
+)
+
+app.json_encoder = LazyJSONEncoder
+swagger = Swagger(app, config=swagger_config, template=template)
 
 
-class BankingAPIRequestSchema(Schema):
-    class Meta:
-        fields = ('Account Id', 'Currency Code', 'Balance')
 
 
-class BankingAPITransactionRequestSchema(Schema):
-    class Meta:
-        fields = ('Sender', 'Receiver', 'Amount')
-
-
-@app.route('/')
 def hello_banking_api():
     return jsonify({"message": "You can start creating account and transfer between acounts"})
 
@@ -46,11 +48,13 @@ dict_of_errors = {700: 'Account number must be greater than zero',
                   702: 'Currency code should be one of them : TRY, USD, EUR',
                   703: 'balance cant be negative',
                   704: 'balance cant have precision greater then two',
+                  705: 'Account dont exist',
                   800: 'Send amount must be bigger than zero',
                   801: 'Send amount precision cant be more then two',
                   802: 'Account(s) dont exist',
                   803: 'Sender and receiver accounts dont have the same currency code',
-                  804: 'Sender dont have enough balance to make this transiction.'}
+                  804: 'Sender dont have enough balance to make this transiction.',
+                  805: 'Transaction dont exist'}
 
 
 def precision(number):
@@ -133,11 +137,9 @@ class AccountModel(metaclass=AccountIterater):
         AccountModel.list_of_accounts[index].balance = AccountModel.list_of_accounts[index].balance + amount
 
 
-class CreateAccount(Resource, MethodResource):
+class CreateAccount(Resource):
 
-    @doc(description='Create Accounts', tags=['Account Methods'])
-    @use_kwargs({"Account Id": fields.Integer(), "Currency Code": fields.String(), "Balance": fields.Float()}, location='json')
-    @marshal_with(BankingAPIRequestSchema, code="200, 700, 701, 702, 703, 704", description="(Account number must be greater than zero),Account number must be unique, (Currency code should be one of them : TRY, USD, EUR), (Balance cant be negative),(Balance cant have precision greater then two)")
+    @swag_from("swagger/swagger_config.yml")
     def post(self):
 
         # Get posted data from the user and parse it as a json file.
@@ -172,8 +174,7 @@ class CreateAccount(Resource, MethodResource):
 
         return jsonify(returnmap)
 
-    @doc(description='List Accounts', tags=['Account Methods'])
-    @marshal_with(BankingAPIRequestSchema, code="200")  # marshalling
+    @swag_from("swagger/swagger_2config.yml")
     def get(self):
 
         accounts = []
@@ -185,18 +186,16 @@ class CreateAccount(Resource, MethodResource):
 
         if len(accounts) == 0:
             return jsonify({
-                            'Mesasge': "No accounts found.",
-                            'Status Code': 200
-                             })
+            'Mesasge': "No accounts found.",
+            'Status Code': 200
+            })
 
 
-        return jsonify({'Transactions': accounts,
-                        'Status Code': 200
-                        })
+        return jsonify({'Status Code': 200,
+                        'Accounts': accounts
+                       })
 
-
-@doc(description='Get Account by ID', tags=['Account Methods'])
-@marshal_with(BankingAPIRequestSchema, code=802, description="Account(s) dont exist")
+@swag_from("swagger/swagger_3config.yml")
 @app.route("/accounts/<int:accountid>")
 def get_account(accountid):
 
@@ -212,13 +211,13 @@ def get_account(accountid):
 
     if len(accounts) == 0:
         return jsonify({
-            'Mesasge': "No transactions found.",
-            'Status Code': 200
+            'Status Code': 705,
+            'Mesasge': dict_of_errors[705],
         })
 
-    return jsonify({'Transactions': accounts,
+    return jsonify({'Accounts': accounts,
                     'Status Code': 200
-                    })
+                   })
 
 
 class TransactionIterater(type):
@@ -236,11 +235,9 @@ class TransactionModel(metaclass=TransactionIterater):
         self.amount = amount
 
 
-class Transactions(Resource, MethodResource):
+class Transactions(Resource):
 
-    @doc(description='Make Transactions', tags=['Transaction Methods'])
-    @use_kwargs({"Sender": fields.Integer(), "Receiver": fields.Integer(), "Amount": fields.Float()}, location=('json'))
-    @marshal_with(BankingAPITransactionRequestSchema, code="200, 700, 701, 702, 703, 704", description="(Send amount must be bigger than zero),(Send amount precision cant be more then two),('Account(s) dont exist'),('Sender and receiver accounts dont have the same currency code'),('Sender dont have enough balance to make this transiction.)")
+    @swag_from("swagger/swagger_tconfig.yml")
     def post(self):
 
         posteddata = request.get_json()
@@ -280,8 +277,7 @@ class Transactions(Resource, MethodResource):
 
         return jsonify(returnmap)
 
-    @doc(description='List All Transactions', tags=['Transaction Methods'])
-    @marshal_with(BankingAPITransactionRequestSchema, code=200, description="Accounts")  # marshalling
+    @swag_from("swagger_t2config.yml")
     def get(self):
 
         transactions = []
@@ -293,17 +289,17 @@ class Transactions(Resource, MethodResource):
 
         if len(transactions) == 0:
             return jsonify({
-                            'Mesasge': "No transactions found.",
-                            'Status Code': 200
-                            })
+            'Mesasge': "No transactions found.",
+            'Status Code': 200
+            })
+
 
         return jsonify({'Transactions': transactions,
                         'Status Code': 200
                         })
 
 
-@doc(description='List Transactions by Sender', tags=['Transaction Methods'])
-@marshal_with(BankingAPITransactionRequestSchema, code=802, description="Account(s) dont exist")
+@swag_from("swagger/swagger_t3config.yml")
 @app.route("/transactions/<int:sender>")
 def get_transaction(sender):
 
@@ -313,9 +309,9 @@ def get_transaction(sender):
 
         if item.sender_account == sender:
             transactions.append({'sender': item.sender_account,
-                                 'receiver': item.receiver_account,
-                                 'amount':  item.amount
-                                 })
+                                  'receiver': item.receiver_account,
+                                  'amount':  item.amount
+                                  })
 
     retmap2 = {
         'Account Number': transactions,
@@ -323,17 +319,15 @@ def get_transaction(sender):
     }
 
     if len(transactions) == 0:
-        retmap2 = {"message": "transaction dont exist"}
+        retmap2 = { "status code": "805",
+                    "message": dict_of_errors[805]}
 
     return jsonify(retmap2)
 
 
 api.add_resource(CreateAccount, "/accounts")
 api.add_resource(Transactions, "/transactions")
-docs.register(CreateAccount,)
-docs.register(Transactions)
-docs.register(get_transaction)
-docs.register(get_account)
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(debug=False)

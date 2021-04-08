@@ -1,6 +1,3 @@
 flask
 flask_restful
-apispec
-marshmallow
-apispec
-flask_apispec
+flasgger

@@ -1,0 +1,39 @@
+summary: "Make transactions between accounts "
+description: "This is a simple API which you can create accounts and make money transfers"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+parameters:
+- in: "body"
+  name: "body"
+  description: "You can make transactions here"
+  required: true
+  schema:
+    type: "object"
+    properties:
+      sender:
+        type: "integer"
+        format: "int64"
+        example : 1
+      receiver:
+        type: "string"
+        format: "int64"
+        example : 2
+      amount:
+        type: "float"
+        format: ".2f"
+        example: 5.25
+responses:
+  800:
+    description: "Send amount must be bigger than zero"
+  801:
+    description: "Send amount precision cant be more then two"
+  802:
+    description: "Account(s) dont exist"
+  803:
+    description: "Sender and receiver accounts dont have the same currency code"
+  804:
+    description: "Sender dont have enough balance to make this transiction"
+
+

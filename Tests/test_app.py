@@ -6,14 +6,6 @@ import json
 class TestHome(BaseTest):
 
 
-    def test_hello_banking_api(self):
-
-        with self.app as c:
-            resp = c.get('/')
-            self.assertEqual(resp.status_code,200)
-            self.assertEqual(json.loads(resp.get_data()),
-                             {"message": "You can start creating account and transfer between acounts"})
-
     def test_Accounts(self):
 
         with self.app as c:
@@ -72,11 +64,11 @@ class TestHome(BaseTest):
         with self.app as c:
             resp = c.get("/accounts/1")
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(json.loads(resp.get_data()),{'Account Number': [{'amount': 4.0, 'receiver': 'USD', 'sender': 1}],
- 'Status Code': 200})
+            self.assertEqual(json.loads(resp.get_data()),{'Accounts': [{'amount': 4.0, 'receiver': 'USD', 'sender': 1}],
+                                                          'Status Code': 200})
             resp = c.get("/accounts/968")
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(json.loads(resp.get_data()), {"message" : "account dont exist"})
+            self.assertEqual(json.loads(resp.get_data()), {'Mesasge': 'Account dont exist', 'Status Code': 705})
 
     def test_Transactions(self):
 
@@ -137,7 +129,7 @@ class TestHome(BaseTest):
             resp = c.get('/transactions/7')
             self.assertEqual(resp.status_code, 200)
             self.assertEqual(json.loads(resp.get_data()),
-                         {'message': 'transaction dont exist',})
+                         {'message': 'Transaction dont exist', 'status code': '805'})
 
 
 

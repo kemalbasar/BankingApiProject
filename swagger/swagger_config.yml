@@ -1,0 +1,37 @@
+summary: "Create accounts for currencies USD, EUR or TRY "
+description: "This is a simple API which you can create accounts and make money transfers"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+parameters:
+- in: "body"
+  name: "body"
+  description: "You can create accounts here"
+  required: true
+  schema:
+    type: "object"
+    properties:
+      account number:
+        type: "integer"
+        format: "int64"
+        example : 1
+      currency code:
+        type: "string"
+        format: "int64"
+        example : "USD"
+      balance:
+        type: "float"
+        format: ".2f"
+        example: 25.25
+responses:
+  700:
+    description: "Account number must be greater than zero"
+  701:
+    description: "Account number must be unique"
+  702:
+    description: "Currency code should be one of them : TRY, USD, EUR"
+  703:
+    description: "Balance cant have precision greater then two"
+  704:
+    description: "Balance cant be negative"

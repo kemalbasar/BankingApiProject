@@ -1,0 +1,7 @@
+summary: "List all transactions "
+description: "Try it out for listing all accounts"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+
