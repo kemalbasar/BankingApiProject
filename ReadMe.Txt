@@ -1,1 +1,1 @@
-Doccumentation at path /swagger-ui
+Doccumentation inculded
